@@ -1,0 +1,5 @@
+# Create a bootable USB stick from existing installation
+
+```bash
+
+```
