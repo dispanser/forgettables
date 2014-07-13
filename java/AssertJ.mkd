@@ -1,0 +1,19 @@
+# AssertJ Quickfix
+
+## Imports
+
+gradle import
+```
+testCompile group: 'org.assertj', 			name: 'assertj-core', 			version: '1.6.1'
+```
+
+maven import 
+```
+<dependency>
+	<groupId>org.assertj</groupId>
+	<artifactId>assertj-core</artifactId>
+	<version>${assertj-core.version}</version>
+	<scope>test</scope>
+</dependency>
+```
+
