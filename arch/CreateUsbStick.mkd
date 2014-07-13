@@ -1,5 +1,65 @@
-# Create a bootable USB stick from existing installation
+# Create a bootable USB stick from existing arch linux installation
 
-```bash
+## Basic disc setup for GPT / Bios scenario
 
+create a (gpt) partition table that contains a bios boot partition of type ef02
+with a size of at least 1 MB.
+```
+> sudo gdisk -l /dev/sdb
+Number  Start (sector)    End (sector)  Size       Code  Name
+   1            2048            4095   1024.0 KiB  EF02  BIOS boot partition
+   2            4096        30489374   14.5 GiB    8300  Linux filesystem
+```
+
+create and mount filesystem:
+```
+mkfs.btrfs -L archroot-usb /dev/sdb2
+mount /dev/sdb2 /mnt -o compress=lzo
+```
+
+## Transfer the data
+
+copy over the data. watch out for additional excludes, -H preserves hard links.
+Zsh had trouble with the asterisks, so I used bash here:
+
+```
+rsync -HaAXv /* /mnt --exclude={/dev/*,/proc/*,/sys/*,/tmp/*,/run/*,/mnt/*,/media/*,/lost+found,/data}
+```
+
+chroot into the new environment, the script takes care of mounting /dev, /sys,
+/proc inside the chroot:
+```
+sudo pacman  -S arch-install-scripts
+arch-chroot /mnt
+```
+
+## Make the system bootable
+
+re-initialize grub config. Not sure if that's required, but I assume the root
+device UUID need to be up to date.
+```
+grub-mkconfig -o /mnt/boot/grub/grub.cfg
+grub-install --target=i386-pc --recheck --debug /dev/sdb
+```
+
+modify /etc/fstab inside the chroot to reflect the mount point - make sure you
+use either a disk label or the UUID of the partition, as mount points will
+likely look different on different systems. Don't forget the compress=lzo
+option if btrfs with lzo-compression is your thing.
+
+## Troubleshooting
+
+I spent 4 hours trying to figure out why grub-install failed with the following
+errors: 
+```
+/usr/sbin/grub-bios-setup: warning: Attempting to install GRUB to a disk with multiple partition labels.  This is not supported yet..
+/usr/sbin/grub-bios-setup: error: filesystem `btrfs' doesn't support blocklists.
+```
+
+The solution here was to zero out the boot sector / partition table and
+recreate the partition table afterwards, it seems that grub was seeing previous
+installations / partition tables.
+
+```
+dd if=/dev/zero of=/dev/sdb count=1024 bs=1024
 ```
